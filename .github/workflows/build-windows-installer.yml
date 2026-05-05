@@ -16,18 +16,22 @@ jobs:
           python-version: "3.12"
 
       - name: Instalar VLC e Inno Setup
-        run: choco install vlc innosetup -y
         shell: cmd
+        run: >
+          choco install vlc innosetup -y --no-progress --limit-output
 
-      # bash evita o PowerShell interpretar { ... } dentro de python -c
+      # cmd + python -c evita o PowerShell tratar { } ou ( ) de forma estranha
       - name: Dependências Python
-        shell: bash
+        shell: cmd
         run: |
-          set -e
           python -m pip install --upgrade pip
+          if errorlevel 1 exit /b 1
           python -m pip install -r requirements.txt
+          if errorlevel 1 exit /b 1
           python -m pip install pyinstaller
-          python -c 'import flet_desktop.version as v; import flet.version as fv; vd=str(v.version).strip(); vf=str(fv.flet_version).strip(); print("flet_desktop", vd, "flet", vf); ok=(vd==vf or vd.split(".")[:2]==vf.split(".")[:2]); assert ok, "versao incompativel: flet_desktop="+repr(vd)+" flet="+repr(vf); print("OK")'
+          if errorlevel 1 exit /b 1
+          python -c "import flet_desktop.version as v; import flet.version as fv; vd=str(v.version).strip(); vf=str(fv.flet_version).strip(); print('flet_desktop', vd, 'flet', vf); assert vd==vf or vd.split('.')[:2]==vf.split('.')[:2]; print('OK')"
+          if errorlevel 1 exit /b 1
 
       - name: Cliente Flet desktop (Windows, para bundle offline)
         shell: pwsh
@@ -35,11 +39,19 @@ jobs:
           $v = (python -c "import flet_desktop.version as v; print(v.version)").Trim()
           New-Item -ItemType Directory -Force -Path build-assets | Out-Null
           $url = "https://github.com/flet-dev/flet/releases/download/v$v/flet-windows.zip"
+          $out = "build-assets\flet-windows.zip"
           Write-Host "Downloading $url"
           try {
-            Invoke-WebRequest -Uri $url -OutFile "build-assets\flet-windows.zip" -UseBasicParsing -MaximumRetryCount 3 -RetryIntervalSec 4
+            Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
           } catch {
-            Write-Warning "Falhou o download do cliente Flet ($url). O build continua; o executável pode precisar de Internet no 1.º arranque para extrair o cliente."
+            Write-Warning "Invoke-WebRequest falhou; a tentar curl.exe..."
+            $curl = Start-Process -FilePath "curl.exe" -ArgumentList @('-fsSL', '-L', '-o', $out, $url) -Wait -PassThru -NoNewWindow
+            if ($curl.ExitCode -ne 0) {
+              Write-Warning "curl.exe terminou com código $($curl.ExitCode)"
+            }
+          }
+          if (-not (Test-Path -LiteralPath $out)) {
+            Write-Warning "Sem flet-windows.zip local; o build continua (1.º arranque pode precisar de Internet)."
           }
 
       - name: PyInstaller (onedir)
@@ -48,6 +60,7 @@ jobs:
           $spec = @("PINK-IPTV-onedir.spec", "installer\PINK-IPTV-onedir.spec") | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $spec) { throw "PINK-IPTV-onedir.spec não encontrado na raiz nem em installer\" }
           python -m PyInstaller --noconfirm $spec
+          if ($LASTEXITCODE -ne 0) { throw "PyInstaller terminou com código $LASTEXITCODE" }
 
       - name: Verificar pasta dist (antes do Inno)
         shell: pwsh
@@ -77,10 +90,18 @@ jobs:
             if ($cmd) { $iscc = $cmd.Source }
           }
           if (-not $iscc) { throw "ISCC.exe não encontrado. Instalação Inno (choco) falhou ou caminho diferente." }
+          $issPath = (Resolve-Path $iss).Path
+          $issDir = Split-Path $issPath -Parent
+          $issLeaf = Split-Path $issPath -Leaf
           Write-Host "ISCC: $iscc"
-          Write-Host "ISS:  $iss"
-          & $iscc $iss
-          if ($LASTEXITCODE -ne 0) { throw "Inno Setup terminou com código $LASTEXITCODE" }
+          Write-Host "ISS: $issPath (cwd=$issDir)"
+          Push-Location $issDir
+          try {
+            & $iscc $issLeaf
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup terminou com código $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
 
       - name: Garantir Setup.exe na pasta dist-output (artifact)
         shell: pwsh
