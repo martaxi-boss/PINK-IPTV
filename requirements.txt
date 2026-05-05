@@ -1,5 +1,7 @@
-flet>=0.84.0
-flet-video>=0.84.0
+# Versões alinhadas (flet-desktop / flet-video fixam flet na mesma minor)
+flet~=0.84.0
+flet-desktop~=0.84.0
+flet-video~=0.84.0
 httpx>=0.28.1
 python-vlc>=3.0.0
 flask>=3.0.0
