@@ -1,0 +1,51 @@
+# Build no GitHub (Windows). Funciona com ficheiros na RAIZ ou em installer\
+
+name: Build Windows installer
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar VLC e Inno Setup
+        run: choco install vlc innosetup -y
+        shell: cmd
+
+      - name: Dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: PyInstaller (onedir)
+        shell: pwsh
+        run: |
+          $spec = @("PINK-IPTV-onedir.spec", "installer\PINK-IPTV-onedir.spec") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $spec) { throw "PINK-IPTV-onedir.spec não encontrado na raiz nem em installer\" }
+          python -m PyInstaller --noconfirm $spec
+
+      - name: Compilar Setup (Inno)
+        shell: pwsh
+        run: |
+          $iss = @("PINK-IPTV-Setup.iss", "installer\PINK-IPTV-Setup.iss") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iss) { throw "PINK-IPTV-Setup.iss não encontrado na raiz nem em installer\" }
+          $candidates = @(
+            Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe",
+            Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe não encontrado." }
+          & $iscc $iss
+
+      - name: Artifact — instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINK-IPTV-Setup
+          path: dist-installer/*.exe
