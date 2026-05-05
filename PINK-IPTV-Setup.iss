@@ -1,13 +1,21 @@
-; Inno Setup — na RAIZ do repositório (BuildDir sem ..)
-; Se moveres este ficheiro para installer\, usa as versões com ..\ no BuildDir.
+; Inno Setup 6 — gera PINK-IPTV-Setup-X.X.exe (instalador, não é app “portátil” de um ficheiro)
+; Cor de rosa: fundo lateral do assistente + realce do texto "Seguinte".
 ;
-; PyInstaller onedir: dist\PINK-IPTV\ com _internal (flet, flet_desktop, etc.). BuildDir mantém-se.
+; 1) Compila primeiro a pasta com PyInstaller (ver INSTALL-SETUP-WINDOWS.txt na pasta installer).
+; 2) Instala Inno Setup: https://jrsoftware.org/isdl.php
+; 3) Abre este .iss no Inno e Compila (F9).
+;
+; Imagem lateral opcional (164x314 px, 24-bit BMP): coloca wizard-side.bmp nesta pasta
+; e descomenta a linha WizardImageFile.
+;
+; PyInstaller onedir gera ..\dist\PINK-IPTV\ (PINK-IPTV.exe + _internal com flet e flet_desktop).
+; Não é preciso mudar BuildDir por causa do cliente Flet; continua a apontar para essa pasta.
 
 #define MyAppName "PINK IPTV"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "PINK IPTV"
 #define MyAppExeName "PINK-IPTV.exe"
-#define BuildDir "dist\PINK-IPTV"
+#define BuildDir "..\dist\PINK-IPTV"
 
 [Setup]
 AppId={{E8B2F4A1-0C9D-4E5F-8A3B-1D2E3F4A5B6C}
@@ -16,7 +24,7 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=dist-installer
+OutputDir=..\dist-installer
 OutputBaseFilename=PINK-IPTV-Setup-{#MyAppVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -25,8 +33,12 @@ DisableProgramGroupPage=no
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64
 UninstallDisplayIcon={app}\{#MyAppExeName}
+
+; Rosa estilo app (#FF0080 em BGR para Inno: $008000FF)
 WizardImageBackColor=$008000FF
 WizardImageStretch=yes
+; Descomenta se tiveres wizard-side.bmp (164x314):
+;WizardImageFile=wizard-side.bmp
 
 [Languages]
 Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
@@ -47,6 +59,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Executar {#MyAppName}"; Flags: 
 [Code]
 procedure InitializeWizard;
 begin
+  { Realce rosa no botão Seguinte: texto branco + negrito (fundo segue tema Windows) }
   WizardForm.NextButton.Font.Style := [fsBold];
   WizardForm.NextButton.Font.Color := clWhite;
 end;

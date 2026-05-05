@@ -21,6 +21,19 @@ if errorlevel 1 (
 py -3.12 -m pip install -r requirements.txt pyinstaller 2>nul
 if errorlevel 1 py -3 -m pip install -r requirements.txt pyinstaller
 
+echo [PINK-IPTV] Cliente Flet desktop ^(flet-windows.zip^) para o PyInstaller embutir offline...
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ErrorActionPreference = 'Stop';" ^
+  "$ver = & py -3.12 -c 'import flet_desktop.version as v; print(v.version)' 2>$null;" ^
+  "if (-not $ver) { $ver = & py -3 -c 'import flet_desktop.version as v; print(v.version)' };" ^
+  "New-Item -ItemType Directory -Force -Path 'build-assets' | Out-Null;" ^
+  "$url = 'https://github.com/flet-dev/flet/releases/download/v' + $ver.Trim() + '/flet-windows.zip';" ^
+  "Write-Host ('A descargar: ' + $url);" ^
+  "Invoke-WebRequest -Uri $url -OutFile 'build-assets\flet-windows.zip' -UseBasicParsing"
+if errorlevel 1 (
+  echo AVISO: Nao foi possivel descarregar flet-windows.zip. A app pode precisar de Internet no 1.o arranque.
+)
+
 echo [PINK-IPTV] A compilar pasta da app...
 py -3.12 -m PyInstaller --noconfirm installer\PINK-IPTV-onedir.spec
 if errorlevel 1 (

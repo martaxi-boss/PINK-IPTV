@@ -1,5 +1,5 @@
 # PyInstaller — pasta completa (onedir) para o Setup.exe
-# Na raiz do repo: pyinstaller --noconfirm PINK-IPTV-onedir.spec
+# Executa NA RAIZ do projeto:  pyinstaller --noconfirm installer/PINK-IPTV-onedir.spec
 # Saída: dist\PINK-IPTV\
 
 # -*- mode: python ; coding: utf-8 -*-
