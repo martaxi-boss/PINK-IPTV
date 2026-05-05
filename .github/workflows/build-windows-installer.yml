@@ -24,6 +24,16 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller
+          python -c "import flet_desktop.version as v; import flet.version as fv; assert v.version == fv.flet_version, (v.version, fv.flet_version); print('flet_desktop OK', v.version)"
+
+      - name: Cliente Flet desktop (Windows, para bundle offline)
+        shell: pwsh
+        run: |
+          $v = python -c "import flet_desktop.version as v; print(v.version)"
+          New-Item -ItemType Directory -Force -Path build-assets | Out-Null
+          $url = "https://github.com/flet-dev/flet/releases/download/v$v/flet-windows.zip"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile "build-assets\flet-windows.zip"
 
       - name: PyInstaller (onedir)
         shell: pwsh
@@ -31,6 +41,15 @@ jobs:
           $spec = @("PINK-IPTV-onedir.spec", "installer\PINK-IPTV-onedir.spec") | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $spec) { throw "PINK-IPTV-onedir.spec não encontrado na raiz nem em installer\" }
           python -m PyInstaller --noconfirm $spec
+
+      - name: Verificar pasta dist (antes do Inno)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist\PINK-IPTV\PINK-IPTV.exe")) {
+            Write-Host "Conteúdo de dist:"
+            Get-ChildItem -Path "dist" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+            throw "Esperado dist\PINK-IPTV\PINK-IPTV.exe após PyInstaller. Corrige PINK-IPTV-onedir.spec se o nome da pasta for outro."
+          }
 
       - name: Compilar Setup (Inno)
         shell: pwsh
@@ -56,8 +75,33 @@ jobs:
           & $iscc $iss
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup terminou com código $LASTEXITCODE" }
 
+      - name: Garantir Setup.exe na pasta dist-output (artifact)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "dist-installer" | Out-Null
+          $candidates = @(
+            (Get-ChildItem "dist-installer\PINK-IPTV-Setup*.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1),
+            (Get-ChildItem "installer\dist-installer\PINK-IPTV-Setup*.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+          ) | Where-Object { $_ }
+          $exe = $candidates | Select-Object -First 1
+          if (-not $exe) {
+            Write-Host "A procurar qualquer PINK-IPTV-Setup*.exe no workspace..."
+            $exe = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "PINK-IPTV-Setup*.exe" -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -notmatch '[\\/]dist[\\/]PINK-IPTV[\\/]' } |
+              Sort-Object LastWriteTime -Descending |
+              Select-Object -First 1
+          }
+          if (-not $exe) {
+            throw "Nenhum PINK-IPTV-Setup*.exe encontrado. No PINK-IPTV-Setup.iss na RAIZ do repo usa: #define BuildDir `"dist\PINK-IPTV`" e OutputDir=dist-installer (sem ..)."
+          }
+          $dest = Join-Path "dist-installer" $exe.Name
+          Copy-Item -LiteralPath $exe.FullName -Destination $dest -Force
+          Write-Host "Artifact usará:" (Resolve-Path $dest)
+
       - name: Artifact — instalador
         uses: actions/upload-artifact@v4
         with:
           name: PINK-IPTV-Setup
           path: dist-installer/*.exe
+          if-no-files-found: error
+.exe
