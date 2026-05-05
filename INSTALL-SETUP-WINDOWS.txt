@@ -1,0 +1,52 @@
+PINK IPTV — Instalador Windows (Setup, não .exe único)
+========================================================
+
+Porque Setup e não um só .exe?
+- Com PyInstaller em modo "onefile", o executável extrai para pastas temporárias; por vezes dá a sensação de que
+  "não guarda o utilizador". Em modo onedir + instalador, a app fica instalada em
+  C:\Program Files\PINK IPTV\ (ou pasta que escolheres). Os perfis continuam em:
+  Documentos\PINK-IPTV\profiles.json  (definido em app.py / server.py).
+
+Requisitos na máquina de compilação
+-----------------------------------
+1. Python 3.11 ou 3.12 (64-bit) — mesmo da app
+2. pip install -r requirements.txt
+3. pip install pyinstaller
+4. VLC instalado no PC de desenvolvimento ajuda a testar; no PC do cliente também deve ter VLC para python-vlc.
+5. Inno Setup 6: https://jrsoftware.org/isdl.php
+
+Passo a passo — compilar a pasta da aplicação
+----------------------------------------------
+Na pasta RAIZ do projeto (onde está app.py):
+
+  cd C:\caminho\para\PINK-IPTV
+  py -3.12 -m pip install -r requirements.txt pyinstaller
+  py -3.12 -m PyInstaller --noconfirm installer\PINK-IPTV-onedir.spec
+
+Verifica:
+  dist\PINK-IPTV\PINK-IPTV.exe
+
+Passo a passo — gerar o Setup.exe
+---------------------------------
+1. Abre no Inno Setup Compiler:
+   installer\PINK-IPTV-Setup.iss
+
+2. Menu Build → Compile (F9).
+
+3. O ficheiro fica em:
+   dist-installer\PINK-IPTV-Setup-1.0.0.exe
+
+Distribui esse Setup ao utilizador. Ele instala a app como programa normal.
+
+Botão cor de rosa no assistente
+-------------------------------
+- O fundo à esquerda do assistente usa a cor #FF0080 (WizardImageBackColor).
+- O texto do botão "Seguinte" fica branco e negrito (InitializeWizard no .iss).
+  O Windows pode manter o fundo do botão no estilo do sistema; para um botão 100% rosa,
+  acrescenta uma imagem lateral: exporta um BMP 164x314 com o teu branding e descomenta
+  WizardImageFile=wizard-side.bmp no .iss.
+
+Notas
+-----
+- Primeira execução após instalar: corre como utilizador normal; os perfis gravam-se em Documentos.
+- Se mudares a versão, altera #define MyAppVersion no .iss.

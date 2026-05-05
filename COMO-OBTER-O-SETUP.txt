@@ -1,0 +1,40 @@
+Não tenho Windows daí de onde escreves o código — o instalador só pode ser GERADO num PC Windows
+ou no GitHub (máquina Windows na nuvem). Escolhe UMA opção.
+
+────────────────────────────────────────────────────────────
+OPÇÃO A — GitHub faz tudo por ti (recomendado, grátis)
+────────────────────────────────────────────────────────────
+
+1. Cria uma conta em https://github.com (se ainda não tiveres).
+
+2. Cria um repositório NOVO e envia para lá a pasta PINK-IPTV
+   (ou faz “Upload files” com o ZIP do projecto).
+
+3. No GitHub, abre o repositório → separador **Actions**.
+
+4. Clica em **Build Windows installer** → botão **Run workflow** → **Run workflow**.
+
+5. Espera 5–15 minutos. Abre o **workflow** que acabou de correr, em baixo vê
+   **Artifacts** → transfere **PINK-IPTV-Setup** (ZIP com o .exe do instalador).
+
+6. No teu PC Windows, extrai o ZIP e corre o **PINK-IPTV-Setup-….exe**.
+
+Nota: a conta GitHub precisa de ter Actions activos (conta normal tem).
+
+────────────────────────────────────────────────────────────
+OPÇÃO B — No teu Windows, um duplo clique
+────────────────────────────────────────────────────────────
+
+1. Instala Python 3.12 (64-bit) e marca “Add to PATH”.
+2. Instala Inno Setup 6: https://jrsoftware.org/isdl.php
+3. Instala VLC.
+
+4. Copia a pasta PINK-IPTV para o PC.
+
+5. Duplo clique em:
+      installer\BUILD-WINDOWS-SETUP.bat
+
+6. Quando terminar, o Setup está em:
+      dist-installer\
+
+Se der erro, copia a janela preta (cmd) e manda a mensagem.
