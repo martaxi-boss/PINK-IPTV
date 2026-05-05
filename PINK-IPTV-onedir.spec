@@ -78,6 +78,3 @@ coll = COLLECT(
     upx=False,
     name='PINK-IPTV',
 )
-
-    name='PINK-IPTV',
-)
