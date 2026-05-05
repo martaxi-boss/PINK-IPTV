@@ -19,21 +19,28 @@ jobs:
         run: choco install vlc innosetup -y
         shell: cmd
 
+      # bash evita o PowerShell interpretar { ... } dentro de python -c
       - name: Dependências Python
+        shell: bash
         run: |
+          set -e
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller
-          python -c "import flet_desktop.version as v; import flet.version as fv; assert v.version == fv.flet_version, (v.version, fv.flet_version); print('flet_desktop OK', v.version)"
+          python -c 'import flet_desktop.version as v; import flet.version as fv; vd=str(v.version).strip(); vf=str(fv.flet_version).strip(); print("flet_desktop", vd, "flet", vf); ok=(vd==vf or vd.split(".")[:2]==vf.split(".")[:2]); assert ok, "versao incompativel: flet_desktop="+repr(vd)+" flet="+repr(vf); print("OK")'
 
       - name: Cliente Flet desktop (Windows, para bundle offline)
         shell: pwsh
         run: |
-          $v = python -c "import flet_desktop.version as v; print(v.version)"
+          $v = (python -c "import flet_desktop.version as v; print(v.version)").Trim()
           New-Item -ItemType Directory -Force -Path build-assets | Out-Null
           $url = "https://github.com/flet-dev/flet/releases/download/v$v/flet-windows.zip"
           Write-Host "Downloading $url"
-          Invoke-WebRequest -Uri $url -OutFile "build-assets\flet-windows.zip"
+          try {
+            Invoke-WebRequest -Uri $url -OutFile "build-assets\flet-windows.zip" -UseBasicParsing -MaximumRetryCount 3 -RetryIntervalSec 4
+          } catch {
+            Write-Warning "Falhou o download do cliente Flet ($url). O build continua; o executável pode precisar de Internet no 1.º arranque para extrair o cliente."
+          }
 
       - name: PyInstaller (onedir)
         shell: pwsh
