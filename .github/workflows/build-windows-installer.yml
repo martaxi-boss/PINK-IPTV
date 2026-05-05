@@ -1,3 +1,5 @@
+# Build no GitHub (Windows). Funciona com ficheiros na RAIZ ou em installer\
+
 name: Build Windows installer
 
 on:
