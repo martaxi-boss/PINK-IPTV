@@ -1,4 +1,8 @@
 # Build no GitHub (Windows). Funciona com ficheiros na RAIZ ou em installer\
+#
+# Nota: NÃO instalamos VLC via Chocolatey aqui — o download é grande e falha muito
+# no CI. O PyInstaller usa o pacote pip "python-vlc" (collect_all vlc). VLC no PC
+# do utilizador final continua a ser útil em runtime, mas não é obrigatório para compilar.
 
 name: Build Windows installer
 
@@ -15,12 +19,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Instalar VLC e Inno Setup
+      # Só Inno Setup — rápido e estável no CI (vlc via choco costuma rebentar o job)
+      - name: Instalar Inno Setup
         shell: cmd
         run: >
-          choco install vlc innosetup -y --no-progress --limit-output
+          choco install innosetup -y --no-progress --limit-output
 
-      # cmd + python -c evita o PowerShell tratar { } ou ( ) de forma estranha
       - name: Dependências Python
         shell: cmd
         run: |
@@ -30,7 +34,7 @@ jobs:
           if errorlevel 1 exit /b 1
           python -m pip install pyinstaller
           if errorlevel 1 exit /b 1
-          python -c "import flet_desktop.version as v; import flet.version as fv; vd=str(v.version).strip(); vf=str(fv.flet_version).strip(); print('flet_desktop', vd, 'flet', vf); assert vd==vf or vd.split('.')[:2]==vf.split('.')[:2]; print('OK')"
+          python -c "import flet_desktop.version as v; import flet.version as fv; vd=str(v.version).strip(); vf=str(fv.flet_version).strip(); print('flet_desktop', vd, 'flet', vf); a=vd.split('.'); b=vf.split('.'); assert vd==vf or (len(a)>=2 and len(b)>=2 and a[:2]==b[:2]); print('OK')"
           if errorlevel 1 exit /b 1
 
       - name: Cliente Flet desktop (Windows, para bundle offline)
@@ -54,13 +58,19 @@ jobs:
             Write-Warning "Sem flet-windows.zip local; o build continua (1.º arranque pode precisar de Internet)."
           }
 
+      # cmd repõe ERRORLEVEL de forma fiável (PowerShell + python às vezes não)
       - name: PyInstaller (onedir)
-        shell: pwsh
+        shell: cmd
         run: |
-          $spec = @("PINK-IPTV-onedir.spec", "installer\PINK-IPTV-onedir.spec") | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $spec) { throw "PINK-IPTV-onedir.spec não encontrado na raiz nem em installer\" }
-          python -m PyInstaller --noconfirm $spec
-          if ($LASTEXITCODE -ne 0) { throw "PyInstaller terminou com código $LASTEXITCODE" }
+          if exist PINK-IPTV-onedir.spec (
+            python -m PyInstaller --noconfirm PINK-IPTV-onedir.spec
+          ) else if exist installer\PINK-IPTV-onedir.spec (
+            python -m PyInstaller --noconfirm installer\PINK-IPTV-onedir.spec
+          ) else (
+            echo ERRO: Nenhum PINK-IPTV-onedir.spec na raiz nem em installer\
+            exit /b 1
+          )
+          if errorlevel 1 exit /b 1
 
       - name: Verificar pasta dist (antes do Inno)
         shell: pwsh
@@ -132,3 +142,16 @@ jobs:
           name: PINK-IPTV-Setup
           path: dist-installer/*.exe
           if-no-files-found: error
+
+      - name: "🔍 Se o job falhou — mostrar pastas (copia isto se precisares de ajuda)"
+        if: failure()
+        shell: cmd
+        run: |
+          echo === WORKSPACE ===
+          cd /d "%GITHUB_WORKSPACE%"
+          dir
+          echo === dist ===
+          if exist dist (dir /s /b dist) else echo dist nao existe
+          echo === dist-installer ===
+          if exist dist-installer (dir /s /b dist-installer) else echo dist-installer nao existe
+          if exist installer\dist-installer (dir /s /b installer\dist-installer)
