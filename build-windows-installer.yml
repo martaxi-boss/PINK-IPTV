@@ -1,0 +1,47 @@
+# Gera o instalador Windows (pasta PyInstaller + Inno Setup).
+# Como usar: GitHub → separador Actions → workflow "Build Windows installer" → Run workflow.
+# Ao terminar: abre o run → Artifacts → transfere o ZIP com o Setup.exe
+
+name: Build Windows installer
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar VLC e Inno Setup (libs + compilador do setup)
+        run: choco install vlc innosetup -y
+        shell: cmd
+
+      - name: Dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: PyInstaller (pasta dist\PINK-IPTV)
+        run: python -m PyInstaller --noconfirm installer\PINK-IPTV-onedir.spec
+
+      - name: Compilar Setup com Inno Setup
+        run: |
+          $candidates = @(
+            Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe",
+            Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe não encontrado após instalar Inno Setup." }
+          & $iscc "installer\PINK-IPTV-Setup.iss"
+        shell: pwsh
+
+      - name: Artifact — instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: PINK-IPTV-Setup
+          path: dist-installer/*.exe
