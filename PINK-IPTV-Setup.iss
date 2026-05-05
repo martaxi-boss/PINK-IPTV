@@ -12,7 +12,7 @@
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "PINK IPTV"
 #define MyAppExeName "PINK-IPTV.exe"
-#define BuildDir "..\dist\PINK-IPTV"
+#define BuildDir "dist\PINK-IPTV"
 
 [Setup]
 AppId={{E8B2F4A1-0C9D-4E5F-8A3B-1D2E3F4A5B6C}
